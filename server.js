@@ -58,23 +58,24 @@ async function saveAdmin() {
 
 app.get('/user/:user_key', async (req, res) => {
     try {
-        const user = await userModel.findOne({ user_key: req.params.user_key })
+        const user = await userModel.findOne({ user_key: req.params.user_key }, null, { timeout: 20000 })
         res.json(user)
     } catch (e) {
         res.status(500).json({ message: e.message })
     }
 })
+
 
 app.get('/investments/:user_key', async (req, res) => {
     try {
-        const user = await investmentsModel.find({ user_key: req.params.user_key})
+        const user = await investmentsModel.find({ user_key: req.params.user_key}, null, { timeout: 20000})
         res.json(user)
     } catch (e) {
         res.status(500).json({ message: e.message })
     }
 })
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 4000;
 app.listen(port, () => {
     console.log(`Server listening on port ${port}`);
 });
