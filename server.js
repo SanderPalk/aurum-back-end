@@ -14,9 +14,9 @@ const corsOptions = {
 }
 
 app.use(cors(corsOptions))
+app.use(bodyParser.json())
 
-mongoose.connect(process.env.DB_URI)
-app.use(bodyParser.urlencoded({extended: false}))
+mongoose.connect(process.env.DB_URI, { useNewUrlParser: true })
 
 async function saveAdmin() {
     try {
@@ -58,20 +58,53 @@ async function saveAdmin() {
 
 app.get('/user/:user_key', async (req, res) => {
     try {
-        const user = await userModel.findOne({ user_key: req.params.user_key }, null, { timeout: 20000 })
+        const user = await userModel.findOne({user_key: req.params.user_key}, null, {timeout: 20000})
         res.json(user)
     } catch (e) {
-        res.status(500).json({ message: e.message })
+        res.status(500).json({message: e.message})
     }
 })
 
 
 app.get('/investments/:user_key', async (req, res) => {
     try {
-        const user = await investmentsModel.find({ user_key: req.params.user_key}, null, { timeout: 20000})
+        const user = await investmentsModel.find({user_key: req.params.user_key}, null, {timeout: 20000})
         res.json(user)
     } catch (e) {
-        res.status(500).json({ message: e.message })
+        res.status(500).json({message: e.message})
+    }
+})
+
+app.get('/admin/:user_key', async (req, res) => {
+    try {
+        const admin = await userModel.findOne({user_key: req.params.user_key, role: 'admin'}, null, {timeout: 20000})
+        res.json(admin)
+    } catch (e) {
+        res.status(500).json({message: e.message})
+    }
+})
+
+app.post('/users', (req, res) => {
+    const userData = req.body;
+    const newUser = new userModel(userData)
+    console.log(newUser)
+    newUser.save()
+        .then(() => {
+            res.status(201).send(newUser)
+        })
+        .catch(err => {
+            res.status(500).send(err)
+        })
+})
+
+app.get('/users/:search_option/:search_value', async (req, res) => {
+    try {
+        const searchOption = req.params.search_option;
+        const searchValue = req.params.search_value;
+        const user = await userModel.findOne({ [searchOption]: searchValue, role:'investor' }, null, {timeout: 20000})
+        res.json(user)
+    } catch (e) {
+        res.status(500).json({message: e.message})
     }
 })
 
