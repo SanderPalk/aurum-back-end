@@ -10,13 +10,19 @@ const bodyParser = require("body-parser");
 const app = express();
 
 const corsOptions = {
-    origin: ['http://localhost:3000', process.env.APP_URI]
+    origin: [process.env.APP_URI]
 }
 
 app.use(cors(corsOptions))
 app.use(bodyParser.json())
 
-mongoose.connect(process.env.DB_URI, { useNewUrlParser: true })
+mongoose.connect(process.env.DB_URI, {useNewUrlParser: true})
+
+const port = process.env.PORT || 4000;
+app.listen(port, () => {
+    console.log(`Server listening on port ${port}`);
+});
+
 
 async function saveAdmin() {
     try {
@@ -53,9 +59,11 @@ async function saveAdmin() {
     } catch (e) {
         console.log(e.message)
     }
+
 }
 
 
+// GET requests
 app.get('/user/:user_key', async (req, res) => {
     try {
         const user = await userModel.findOne({user_key: req.params.user_key}, null, {timeout: 20000})
@@ -64,7 +72,6 @@ app.get('/user/:user_key', async (req, res) => {
         res.status(500).json({message: e.message})
     }
 })
-
 
 app.get('/investments/:user_key', async (req, res) => {
     try {
@@ -84,31 +91,68 @@ app.get('/admin/:user_key', async (req, res) => {
     }
 })
 
-app.post('/users', (req, res) => {
-    const userData = req.body;
-    const newUser = new userModel(userData)
-    console.log(newUser)
-    newUser.save()
-        .then(() => {
-            res.status(201).send(newUser)
-        })
-        .catch(err => {
-            res.status(500).send(err)
-        })
-})
-
 app.get('/users/:search_option/:search_value', async (req, res) => {
     try {
         const searchOption = req.params.search_option;
         const searchValue = req.params.search_value;
-        const user = await userModel.findOne({ [searchOption]: searchValue, role:'investor' }, null, {timeout: 20000})
+        const user = await userModel.findOne({
+            [searchOption]: searchValue,
+            role: {$not: /admin/}
+        }, null, {timeout: 20000})
         res.json(user)
     } catch (e) {
         res.status(500).json({message: e.message})
     }
 })
 
-const port = process.env.PORT || 4000;
-app.listen(port, () => {
-    console.log(`Server listening on port ${port}`);
-});
+app.get('/investments', async (req, res) => {
+    try {
+        const investments = await investmentsModel.find({user_key: {$not: /admin$/}, role: {$not: /admin/}})
+        res.json(investments)
+    } catch (e) {
+        res.status(500).json({message: e.message})
+    }
+})
+
+app.get('/users', async (req, res) => {
+    try {
+        const users = await userModel.find({user_key: {$not: /admin$/}, role: {$not: /admin/}})
+        res.json(users)
+    } catch (e) {
+        res.status(500).json({message: e.message})
+    }
+})
+
+
+// POST requests
+app.post('/users/post/:user_key', (req, res) => {
+    const adminKey = req.params.user_key
+    if (adminKey === process.env.ADMIN_KEY_1 || process.env.ADMIN_KEY_2) {
+        const userData = req.body;
+        const newUser = new userModel(userData)
+        console.log(newUser)
+        newUser.save()
+            .then(() => {
+                res.status(201).send(newUser)
+            })
+            .catch(err => {
+                res.status(500).send(err)
+            })
+    } else res.status(401).send("Unauthorized Key")
+})
+
+app.post('/investments/post/:user_key', (req, res) => {
+    const adminKey = req.params.user_key
+    if (adminKey === process.env.ADMIN_KEY_1 || process.env.ADMIN_KEY_2) {
+        const investmentData = req.body
+        const newInvestment = new investmentsModel(investmentData)
+        console.log(newInvestment)
+        newInvestment.save()
+            .then(() => {
+                res.status(201).send(newInvestment)
+            })
+            .catch(err => {
+                res.status(500).send(err)
+            })
+    }
+})
